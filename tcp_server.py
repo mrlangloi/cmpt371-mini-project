@@ -1,5 +1,33 @@
 from socket import *
 
+# Logic to generate each status code + HTTP request message to test (using `curl -v` in a terminal).
+# -v flag is to set "verbose mode", which shows details of the req/res exchange.
+
+# 200 - OK
+#   logic:  The HTTP request passes all checks for status codes (304, 403, 404, and 505).
+#           Return 200 response header with the file as the body.
+#   test:   curl -v http://localhost:12000/test.html
+
+# 304 - Not Modified
+#   logic:  If "If-Modified-Since" header is in the request, compare it with the file's timestamp.
+#           Return 304 response header without a body if the file timestamp is older than request timestamp.
+#   test:   curl -v --header "If-Modified-Since: Mon, 21 Jul 2026 00:00:00 GMT" http://localhost:12000/test.html
+
+# 403 - Forbidden
+#   logic:  Check if the file exists, and if it does check if the request is permitted to access it.
+#           Return 403 if the request is not authorized to access the file.
+#   test:   curl -v http://localhost:12000/data
+
+# 404 - Not Found
+#   logic:  Check if the file exists.
+#           Return 404 if the file does not exist.
+#   test:   curl -v http://localhost:12000/notfound.html
+
+# 505 - HTTP Version Not Supported
+#   logic:  Check the HTTP version number of the request.
+#           Return 505 if the request's version is not supported
+#   test:   curl -v --http1 http://localhost:12000/test.html
+
 serverPort = 12000
 
 def start_tcp_server():
