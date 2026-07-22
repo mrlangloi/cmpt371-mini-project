@@ -1,10 +1,13 @@
 from socket import *
 
 serverPort = 12000
-serverSocket = socket(AF_INET, SOCK_STREAM)
-serverSocket.bind(("", serverPort))
-serverSocket.listen(1)
-print("The server is ready to receive")
+
+def start_tcp_server():
+    # create TCP socket
+    serverSocket = socket(AF_INET, SOCK_STREAM)
+    serverSocket.bind(("", serverPort))
+    serverSocket.listen(1)
+    print("The server is ready to receive")
 
 while True:
     connectionSocket, addr = serverSocket.accept()
@@ -28,4 +31,7 @@ while True:
     connectionSocket.send(responseStatus.encode())
     # connectionSocket.send(capitalizedSentence.encode())
 
-    connectionSocket.close()
+        connectionSocket.close()
+
+if __name__ == "__main__":
+    start_tcp_server()
