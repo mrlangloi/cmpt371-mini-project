@@ -8,26 +8,22 @@ BYTES_RECEIVED = 1024
 # e.g., b"GET /api/v1 HTTP/1.1\r\nHost: localhost:8080\r\nAccept: */*\r\n\r\n"
 # returns ('localhost', 8080)
 def get_host_port(requestData):
-    # get the value after the "Host:" string
-    hostStart = requestData.find(b'Host: ') + len(b'Host: ')
+    requestDataLower = requestData.lower()
+
+    # get the value after the "host:" string
+    hostStart = requestDataLower.find(b'host: ') + len(b'host: ')
     hostEnd = requestData.find(b'\r\n', hostStart)
     hostString = requestData[hostStart:hostEnd].decode()
 
-    # get the port
-    portStart = hostString.find(':')
-    webserverStart = hostString.find('/')
-
-    if webserverStart == -1:
-        webserverStart = len(hostString)
-
-    if portStart == -1 or webserverStart < portStart:
-        # default port
-        port = 80
-        host = hostString[0:webserverStart]
+    # split and return the host and port
+    if ':' in hostString:
+        # localhost:8080 into ('localhost', 8080)
+        host, portString = hostString.split(':', 1)
+        port = int(portString)
     else:
-        # extract the specific port from the host string
-        port = int((hostString[portStart + 1:])[0:webserverStart - portStart - 1])
-        host = hostString[:portStart]
+        # localhost into ('localhost', 80)
+        host = hostString
+        port = 80
 
     return host, port
 
@@ -61,8 +57,8 @@ def handle_proxy_request(clientSocket: socket):
 
         while True:
             response = originSocket.recv(BYTES_RECEIVED)
-            print("Response Data:")
-            print(response.decode())
+            # print("Response Data:")
+            # print(response.decode())
 
             if not response:
                 break
