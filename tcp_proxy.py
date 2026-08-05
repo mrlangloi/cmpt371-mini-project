@@ -29,7 +29,7 @@ def get_host_port(requestData):
 
     return host, port
 
-def handle_proxy_request(clientSocket):
+def handle_proxy_request(clientSocket: socket):
     try:
         # receive client request
         requestData = clientSocket.recv(1024)
@@ -37,8 +37,6 @@ def handle_proxy_request(clientSocket):
         if not requestData:
             clientSocket.close()
             return
-
-        clientSocket.setBlocking(False)
 
         print("Request Data:")
         print(requestData.decode())
@@ -52,7 +50,27 @@ def handle_proxy_request(clientSocket):
         method, url, version = firstHeader
         print(f"Method: {method}, URL: {url}, Version: {version}")
 
-        
+        # create socket to connect to origin server
+        originSocket = socket(AF_INET, SOCK_STREAM)
+        originSocket.connect((host, port))
+
+        # forward the request to the origin server
+        originSocket.sendall(requestData)
+
+        while True:
+            response = originSocket.recv(1024)
+            print("Response Data:")
+            print(response.decode())
+
+            if not response:
+                break
+
+            if len(response) > 0:
+                clientSocket.sendall(response)
+            else:
+                break
+
+        originSocket.close()
 
     except Exception as e:
         print(f"Error handling request: {e}")
