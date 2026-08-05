@@ -1,4 +1,5 @@
 from socket import *
+import threading
 
 serverPort = 12001
 
@@ -8,6 +9,8 @@ def handle_proxy_request(clientSocket):
 
     if not requestData:
         return
+
+    clientSocket.setBlocking(False)
 
     print("Request Data:")
     print(requestData)
@@ -30,7 +33,8 @@ def start_tcp_proxy():
         print("Connection received from:", addr)
 
         # process the request
-        handle_proxy_request(connectionSocket)
+        clientHandler = threading.Thread(target=handle_proxy_request, args=(connectionSocket,))
+        clientHandler.start()
 
         connectionSocket.close()
 
