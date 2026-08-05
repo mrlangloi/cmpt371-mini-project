@@ -30,24 +30,34 @@ def get_host_port(requestData):
     return host, port
 
 def handle_proxy_request(clientSocket):
-    # receive client request
-    requestData = clientSocket.recv(1024).decode()
+    try:
+        # receive client request
+        requestData = clientSocket.recv(1024)
 
-    if not requestData:
-        return
+        if not requestData:
+            clientSocket.close()
+            return
 
-    clientSocket.setBlocking(False)
+        clientSocket.setBlocking(False)
 
-    print("Request Data:")
-    print(requestData)
+        print("Request Data:")
+        print(requestData.decode())
 
-    # parse the request
-    headers = requestData.split('\r\n')
-    firstHeader = headers[0].split(' ')
-    method, url, version = firstHeader
-    print(f"Method: {method}, URL: {url}, Version: {version}")
+        # parse the request
+        host, port = get_host_port(requestData)
+        print(f"Host: {host}, Port: {port}")
 
-    host, port = get_host_port(requestData)
+        headers = requestData.decode().split('\r\n')
+        firstHeader = headers[0].split(' ')
+        method, url, version = firstHeader
+        print(f"Method: {method}, URL: {url}, Version: {version}")
+
+        
+
+    except Exception as e:
+        print(f"Error handling request: {e}")
+    finally:
+        clientSocket.close()
 
 
 def start_tcp_proxy():
@@ -63,8 +73,6 @@ def start_tcp_proxy():
         # process the request
         clientHandler = threading.Thread(target=handle_proxy_request, args=(connectionSocket,))
         clientHandler.start()
-
-        connectionSocket.close()
 
 if __name__ == "__main__":
     start_tcp_proxy()
