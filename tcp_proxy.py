@@ -2,6 +2,8 @@ from socket import *
 import threading
 
 serverPort = 12001
+PROXY_LISTEN = 10
+BYTES_RECEIVED = 1024
 
 # e.g., b"GET /api/v1 HTTP/1.1\r\nHost: localhost:8080\r\nAccept: */*\r\n\r\n"
 # returns ('localhost', 8080)
@@ -32,7 +34,7 @@ def get_host_port(requestData):
 def handle_proxy_request(clientSocket: socket):
     try:
         # receive client request
-        requestData = clientSocket.recv(1024)
+        requestData = clientSocket.recv(BYTES_RECEIVED)
 
         if not requestData:
             clientSocket.close()
@@ -58,7 +60,7 @@ def handle_proxy_request(clientSocket: socket):
         originSocket.sendall(requestData)
 
         while True:
-            response = originSocket.recv(1024)
+            response = originSocket.recv(BYTES_RECEIVED)
             print("Response Data:")
             print(response.decode())
 
@@ -81,7 +83,7 @@ def handle_proxy_request(clientSocket: socket):
 def start_tcp_proxy():
     serverSocket = socket(AF_INET, SOCK_STREAM)
     serverSocket.bind(("", serverPort))
-    serverSocket.listen(4)
+    serverSocket.listen(PROXY_LISTEN)
     print("The proxy is ready to receive")
 
     while True:
