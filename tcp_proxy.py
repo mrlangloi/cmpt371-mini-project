@@ -46,6 +46,13 @@ def get_path(url: String):
 
     return url
 
+def get_last_modified(responseData):
+    headers = responseData.decode().split('\r\n')
+    for header in headers:
+        if header.lower().startswith('last-modified:'):
+            return header.split(':')[1]
+    return None
+
 def handle_proxy_request(clientSocket: socket):
     try:
         # receive client request
@@ -87,18 +94,34 @@ def handle_proxy_request(clientSocket: socket):
         # forward the conditional GET request to the origin server
         originSocket.sendall(conditionalGet.encode())
 
-        while True:
-            response = originSocket.recv(BYTES_RECEIVED)
-            # print("Response Data:")
-            # print(response.decode())
+        # check the origin server response
+        response = originSocket.recv(BYTES_RECEIVED)
 
-            if not response:
-                break
+        
+        if "304 Not Modified" in response and (url in cache):
+            # cache has up-to-date version, send that instead
+            clientSocket.send(data)
+        elif "200 OK" in response:
+            # cache has stale version, update cache
+            newLastModified = get_last_modified(response)
+            cache[url] = (response, newLastModified)
+            clientSocket.send(response)
+        else:
+            # origin server sent back either 403, 404, or 505
+            clientSocket.send(response)
 
-            if len(response) > 0:
-                clientSocket.sendall(response)
-            else:
-                break
+        # while True:
+        #     response = originSocket.recv(BYTES_RECEIVED)
+        #     # print("Response Data:")
+        #     # print(response.decode())
+
+        #     if not response:
+        #         break
+
+        #     if len(response) > 0:
+        #         clientSocket.sendall(response)
+        #     else:
+        #         break
 
         originSocket.close()
 
