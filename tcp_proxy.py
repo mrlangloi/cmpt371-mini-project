@@ -6,6 +6,7 @@ PROXY_LISTEN = 10
 BYTES_RECEIVED = 1024
 
 cache = {}
+cacheLock = threading.Lock()
 
 # e.g., b"GET /api/v1 HTTP/1.1\r\nHost: localhost:8080\r\nAccept: */*\r\n\r\n"
 # returns ('localhost', 8080)
@@ -57,7 +58,7 @@ def get_last_modified(responseData):
     headers = headersData.decode('utf-8', errors='ignore').split('\r\n')
     for header in headers:
         if header.lower().startswith('last-modified:'):
-            return header.split(':', 1)[1]
+            return header.split(':', 1)[1].strip()
     return None
 
 def handle_proxy_request(clientSocket: socket):
@@ -82,11 +83,10 @@ def handle_proxy_request(clientSocket: socket):
         path = get_path(url)
         print(f"Method: {method}, URL: {url}, Path: {path}, Version: {version}")
 
-        # cache lookup
-        data = None
-        lastModified = None
-        if url in cache:
-            data, lastModified = cache[url]
+        # cache lookup (thread-safe)
+        with cacheLock:
+            entry = cache.get(url)
+        data, lastModified = entry if entry else (None, None)
 
         # create a conditional GET to origin server to check if file is up-to-date
         conditionalGet = f"{method} {path} {version}\r\n"
@@ -94,7 +94,7 @@ def handle_proxy_request(clientSocket: socket):
         if lastModified:
             conditionalGet += f"If-Modified-Since: {lastModified}\r\n"
         for header in headers[1:]:
-            if header.strip() and not header.lower().startswith(("host:", "if-modified-since")):
+            if header.strip() and not header.lower().startswith(("host:", "if-modified-since:")):
                 conditionalGet += header + "\r\n"
         conditionalGet += "\r\n"
 
@@ -115,15 +115,18 @@ def handle_proxy_request(clientSocket: socket):
 
         # check the origin server response
         responseDecoded = response.decode('utf-8', errors='ignore')
-        if "304 Not Modified" in responseDecoded and (url in cache):
+        if "304 Not Modified" in responseDecoded and data:
             # cache has up-to-date version, send that instead
             print("304 Not Modified, sending cached version instead")
             clientSocket.sendall(data)
         elif "200 OK" in responseDecoded:
-            # cache has stale version, update cache
+            # cache has stale version, update cache (thread-safe)
             print("200 OK, updating cache and before responding")
             newLastModified = get_last_modified(response)
-            cache[url] = (response, newLastModified)
+
+            with cacheLock:
+                cache[url] = (response, newLastModified)
+
             clientSocket.sendall(response)
         else:
             # origin server sent back either 403, 404, or 505
