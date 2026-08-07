@@ -94,34 +94,28 @@ def handle_proxy_request(clientSocket: socket):
         # forward the conditional GET request to the origin server
         originSocket.sendall(conditionalGet.encode())
 
-        # check the origin server response
-        response = originSocket.recv(BYTES_RECEIVED)
+        # build the server's response
+        response = b""
+        while True:
+            responseData = originSocket.recv(BYTES_RECEIVED)
+            if not responseData:
+                break
+            response += responseData
 
-        
+        # check the origin server response
         if "304 Not Modified" in response and (url in cache):
             # cache has up-to-date version, send that instead
+            print("304 Not Modified, sending cached version instead")
             clientSocket.send(data)
         elif "200 OK" in response:
             # cache has stale version, update cache
+            print("200 OK, updating cache and before responding")
             newLastModified = get_last_modified(response)
             cache[url] = (response, newLastModified)
             clientSocket.send(response)
         else:
             # origin server sent back either 403, 404, or 505
             clientSocket.send(response)
-
-        # while True:
-        #     response = originSocket.recv(BYTES_RECEIVED)
-        #     # print("Response Data:")
-        #     # print(response.decode())
-
-        #     if not response:
-        #         break
-
-        #     if len(response) > 0:
-        #         clientSocket.sendall(response)
-        #     else:
-        #         break
 
         originSocket.close()
 
