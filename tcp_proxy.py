@@ -47,7 +47,14 @@ def get_path(url: str):
     return url
 
 def get_last_modified(responseData):
-    headers = responseData.decode('utf-8', errors='ignore').split('\r\n')
+    # only decode the HTTP header block, ignoring any payload
+    headersEnd = responseData.find(b'\r\n\r\n')
+    if headersEnd == -1:
+        headersData = responseData
+    else:
+        headersData = responseData[:headersEnd]
+    
+    headers = headersData.decode('utf-8', errors='ignore').split('\r\n')
     for header in headers:
         if header.lower().startswith('last-modified:'):
             return header.split(':', 1)[1]
