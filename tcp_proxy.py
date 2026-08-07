@@ -15,7 +15,7 @@ def get_host_port(requestData):
     # get the value after the "host:" string
     hostStart = requestDataLower.find(b'host: ') + len(b'host: ')
     hostEnd = requestData.find(b'\r\n', hostStart)
-    hostString = requestData[hostStart:hostEnd].decode()
+    hostString = requestData[hostStart:hostEnd].decode('utf-8', errors='ignore')
 
     # split and return the host and port
     if ':' in hostString:
@@ -47,7 +47,7 @@ def get_path(url: String):
     return url
 
 def get_last_modified(responseData):
-    headers = responseData.decode().split('\r\n')
+    headers = responseData.decode('utf-8', errors='ignore').split('\r\n')
     for header in headers:
         if header.lower().startswith('last-modified:'):
             return header.split(':')[1]
@@ -63,13 +63,13 @@ def handle_proxy_request(clientSocket: socket):
             return
 
         print("Request Data:")
-        print(requestData.decode())
+        print(requestData.decode('utf-8', errors='ignore'))
 
         # parse the request
         host, port = get_host_port(requestData)
         print(f"Host: {host}, Port: {port}")
 
-        headers = requestData.decode().split('\r\n')
+        headers = requestData.decode('utf-8', errors='ignore').split('\r\n')
         firstHeader = headers[0].split(' ')
         method, url, version = firstHeader
         path = get_path(url)
@@ -92,7 +92,7 @@ def handle_proxy_request(clientSocket: socket):
         originSocket.connect((host, port))
 
         # forward the conditional GET request to the origin server
-        originSocket.sendall(conditionalGet.encode())
+        originSocket.sendall(conditionalGet.encode('utf-8'))
 
         # build the server's response
         response = b""
@@ -103,11 +103,12 @@ def handle_proxy_request(clientSocket: socket):
             response += responseData
 
         # check the origin server response
-        if "304 Not Modified" in response and (url in cache):
+        responseDecoded = response.decode('utf-8', errors='ignore')
+        if "304 Not Modified" in responseDecoded and (url in cache):
             # cache has up-to-date version, send that instead
             print("304 Not Modified, sending cached version instead")
             clientSocket.send(data)
-        elif "200 OK" in response:
+        elif "200 OK" in responseDecoded:
             # cache has stale version, update cache
             print("200 OK, updating cache and before responding")
             newLastModified = get_last_modified(response)
