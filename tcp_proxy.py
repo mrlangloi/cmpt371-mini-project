@@ -29,7 +29,7 @@ def get_host_port(requestData):
 
     return host, port
 
-def get_path(url: String):
+def get_path(url: str):
     if url.startswith("http://") or url.startswith("https://"):
         # split https://localhost:8080/index.html into ["https", "localhost:8080/index.html"]
         urlSplit = url.split("://")
@@ -50,7 +50,7 @@ def get_last_modified(responseData):
     headers = responseData.decode('utf-8', errors='ignore').split('\r\n')
     for header in headers:
         if header.lower().startswith('last-modified:'):
-            return header.split(':')[1]
+            return header.split(':', 1)[1]
     return None
 
 def handle_proxy_request(clientSocket: socket):
@@ -107,16 +107,16 @@ def handle_proxy_request(clientSocket: socket):
         if "304 Not Modified" in responseDecoded and (url in cache):
             # cache has up-to-date version, send that instead
             print("304 Not Modified, sending cached version instead")
-            clientSocket.send(data)
+            clientSocket.sendall(data)
         elif "200 OK" in responseDecoded:
             # cache has stale version, update cache
             print("200 OK, updating cache and before responding")
             newLastModified = get_last_modified(response)
             cache[url] = (response, newLastModified)
-            clientSocket.send(response)
+            clientSocket.sendall(response)
         else:
             # origin server sent back either 403, 404, or 505
-            clientSocket.send(response)
+            clientSocket.sendall(response)
 
         originSocket.close()
 
