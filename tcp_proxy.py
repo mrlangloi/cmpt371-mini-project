@@ -5,6 +5,8 @@ serverPort = 12001
 PROXY_LISTEN = 10
 BYTES_RECEIVED = 1024
 
+cache = {}
+
 # e.g., b"GET /api/v1 HTTP/1.1\r\nHost: localhost:8080\r\nAccept: */*\r\n\r\n"
 # returns ('localhost', 8080)
 def get_host_port(requestData):
@@ -66,12 +68,24 @@ def handle_proxy_request(clientSocket: socket):
         path = get_path(url)
         print(f"Method: {method}, URL: {url}, Path: {path}, Version: {version}")
 
+        # cache lookup
+        data = None
+        lastModified = None
+        if url in cache:
+            data, lastModified = cache[url]
+
+        # create a conditional GET to origin server to check if file is up-to-date
+        conditionalGet = f"{method} {path} {version}\r\n"
+        conditionalGet += f"Host: {host}\r\n"
+        if lastModified:
+            conditionalGet += f"If-Modified-Since: {lastModified}\r\n"
+
         # create socket to connect to origin server
         originSocket = socket(AF_INET, SOCK_STREAM)
         originSocket.connect((host, port))
 
-        # forward the request to the origin server
-        originSocket.sendall(requestData)
+        # forward the conditional GET request to the origin server
+        originSocket.sendall(conditionalGet.encode())
 
         while True:
             response = originSocket.recv(BYTES_RECEIVED)
