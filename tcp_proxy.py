@@ -27,6 +27,23 @@ def get_host_port(requestData):
 
     return host, port
 
+def get_path(url: String):
+    if url.startswith("http://") or url.startswith("https://"):
+        # split https://localhost:8080/index.html into ["https", "localhost:8080/index.html"]
+        urlSplit = url.split("://")
+        if len(urlSplit) == 2:
+            # find the position of the slash after the port
+            pathStart = urlSplit[1].find("/")
+
+            if pathStart == -1:
+                # no path, return "/"
+                return "/"
+            else:
+                # return the path
+                return urlSplit[1][pathStart:]
+
+    return url
+
 def handle_proxy_request(clientSocket: socket):
     try:
         # receive client request
@@ -46,7 +63,8 @@ def handle_proxy_request(clientSocket: socket):
         headers = requestData.decode().split('\r\n')
         firstHeader = headers[0].split(' ')
         method, url, version = firstHeader
-        print(f"Method: {method}, URL: {url}, Version: {version}")
+        path = get_path(url)
+        print(f"Method: {method}, URL: {url}, Path: {path}, Version: {version}")
 
         # create socket to connect to origin server
         originSocket = socket(AF_INET, SOCK_STREAM)
