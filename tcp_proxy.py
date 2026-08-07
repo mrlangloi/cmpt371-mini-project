@@ -86,6 +86,10 @@ def handle_proxy_request(clientSocket: socket):
         conditionalGet += f"Host: {host}\r\n"
         if lastModified:
             conditionalGet += f"If-Modified-Since: {lastModified}\r\n"
+        for header in headers[1:]:
+            if header.strip() and not header.lower().startswith(("host:", "if-modified-since")):
+                conditionalGet += header + "\r\n"
+        conditionalGet += "\r\n"
 
         # create socket to connect to origin server
         originSocket = socket(AF_INET, SOCK_STREAM)
