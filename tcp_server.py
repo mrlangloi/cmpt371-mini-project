@@ -66,15 +66,17 @@ def start_tcp_server():
             connectionSocket.close()
             continue
 
-        # 404 - Not Found; when user request for something that does not exist
-        if not os.path.isfile(filename):
+        try:
+            with open(filename, "rb") as f:
+                body = f.read()
+        except FileNotFoundError:
+            # 404 - Not Found; when user request for something that does not exist
             response = "HTTP/1.1 404 Not Found\r\n\r\n"
             connectionSocket.send(response.encode())
             connectionSocket.close()
             continue
-
-        # 403 - Forbidden; when user request does not have permission to access
-        if not os.access(filename, os.R_OK):
+        except PermissionError:
+            # 403 - Forbidden; when user request does not have permission to access
             response = "HTTP/1.1 403 Forbidden\r\n\r\n"
             connectionSocket.send(response.encode())
             connectionSocket.close()
@@ -100,9 +102,6 @@ def start_tcp_server():
                 continue
 
         # 200 - OK; everything checks out correctly
-        with open(filename, "rb") as f:
-            body = f.read()
-
         last_modified = mtime.strftime("%a, %d %b %Y %H:%M:%S GMT")
         response = "HTTP/1.1 200 OK\r\n"
         response += f"Last-Modified: {last_modified}\r\n"
