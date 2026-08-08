@@ -88,10 +88,10 @@ def start_tcp_server():
             if line.lower().startswith("if-modified-since:"):
                 ims_value = line.split(":", 1)[1].strip()
                 break
-    
+
+        mtime = datetime.fromtimestamp(os.path.getmtime(filename), timezone.utc).replace(microsecond=0) # File's actual modified time
         if ims_value:
             ims = datetime.strptime(ims_value, "%a, %d %b %Y %H:%M:%S GMT").replace(tzinfo=timezone.utc)
-            mtime = datetime.fromtimestamp(os.path.getmtime(filename), timezone.utc) # File's actual modified time
             # The file was last modified at or before the client's date - File hasn't changed since the client's copy
             if mtime <= ims:
                 response = "HTTP/1.1 304 Not Modified\r\n\r\n"
@@ -103,7 +103,9 @@ def start_tcp_server():
         with open(filename, "rb") as f:
             body = f.read()
 
+        last_modified = mtime.strftime("%a, %d %b %Y %H:%M:%S GMT")
         response = "HTTP/1.1 200 OK\r\n"
+        response += f"Last-Modified: {last_modified}\r\n"
         response += "\r\n"
         connectionSocket.send(response.encode() + body)
         # connectionSocket.send(capitalizedSentence.encode())
