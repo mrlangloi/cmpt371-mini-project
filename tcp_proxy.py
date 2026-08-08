@@ -23,10 +23,12 @@ def get_host_port(requestData):
         # localhost:8080 into ('localhost', 8080)
         host, portString = hostString.split(':', 1)
         port = int(portString)
+        if port == serverPort:
+            port = 12000
     else:
-        # localhost into ('localhost', 80)
+        # localhost into ('localhost', 12000)
         host = hostString
-        port = 80
+        port = 12000
 
     return host, port
 

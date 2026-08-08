@@ -33,15 +33,16 @@ import threading
 
 serverPort = 12000
 
+
 def handle_client(connectionSocket, addr):
     print("Connection received from:", addr)
 
     request = connectionSocket.recv(1024).decode()
     print(request)
 
-    # Parse the request line 
+    # Parse the request line
     lines = request.split("\r\n")
-    method, path, version = lines[0].split() # lines[0] is the request line
+    method, path, version = lines[0].split()  # lines[0] is the request line
 
     # Map the URL path to a local file
     if path == "/":
@@ -59,15 +60,17 @@ def handle_client(connectionSocket, addr):
         connectionSocket.close()
         return
 
-    # 404 - Not Found; when user request for something that does not exist
-    if not os.path.isfile(filename):
+    try:
+        with open(filename, "rb") as f:
+            body = f.read()
+    except FileNotFoundError:
+        # 404 - Not Found; when user request for something that does not exist
         response = "HTTP/1.1 404 Not Found\r\n\r\n"
         connectionSocket.send(response.encode())
         connectionSocket.close()
         return
-
-    # 403 - Forbidden; when user request does not have permission to access
-    if not os.access(filename, os.R_OK):
+    except PermissionError:
+        # 403 - Forbidden; when user request does not have permission to access
         response = "HTTP/1.1 403 Forbidden\r\n\r\n"
         connectionSocket.send(response.encode())
         connectionSocket.close()
@@ -82,9 +85,9 @@ def handle_client(connectionSocket, addr):
             ims_value = line.split(":", 1)[1].strip()
             break
 
+    mtime = datetime.fromtimestamp(os.path.getmtime(filename), timezone.utc).replace(microsecond=0)  # File's actual modified time
     if ims_value:
         ims = datetime.strptime(ims_value, "%a, %d %b %Y %H:%M:%S GMT").replace(tzinfo=timezone.utc)
-        mtime = datetime.fromtimestamp(os.path.getmtime(filename), timezone.utc) # File's actual modified time
         # The file was last modified at or before the client's date - File hasn't changed since the client's copy
         if mtime <= ims:
             response = "HTTP/1.1 304 Not Modified\r\n\r\n"
@@ -93,15 +96,15 @@ def handle_client(connectionSocket, addr):
             return
 
     # 200 - OK; everything checks out correctly
-    with open(filename, "rb") as f:
-        body = f.read()
-
+    last_modified = mtime.strftime("%a, %d %b %Y %H:%M:%S GMT")
     response = "HTTP/1.1 200 OK\r\n"
+    response += f"Last-Modified: {last_modified}\r\n"
     response += "\r\n"
     connectionSocket.send(response.encode() + body)
     # connectionSocket.send(capitalizedSentence.encode())
 
     connectionSocket.close()
+
 
 def start_tcp_server():
     # create TCP socket
@@ -112,8 +115,10 @@ def start_tcp_server():
 
     while True:
         connectionSocket, addr = serverSocket.accept()
+        # Multi-threaded: each connection handled in its own thread
         clientThread = threading.Thread(target=handle_client, args=(connectionSocket, addr))
         clientThread.start()
+
 
 if __name__ == "__main__":
     start_tcp_server()
