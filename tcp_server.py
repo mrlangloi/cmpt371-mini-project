@@ -32,7 +32,7 @@ import threading
 #   test:   curl -v --http1 http://localhost:12000/test.html
 
 serverPort = 12000
-
+SERVER_LISTEN = 10
 
 def handle_client(connectionSocket, addr):
     print("Connection received from:", addr)
@@ -110,7 +110,7 @@ def start_tcp_server():
     # create TCP socket
     serverSocket = socket(AF_INET, SOCK_STREAM)
     serverSocket.bind(("", serverPort))
-    serverSocket.listen(1)
+    serverSocket.listen(SERVER_LISTEN)
     print("The server is ready to receive")
 
     while True:
